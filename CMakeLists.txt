@@ -12,7 +12,7 @@ set(EMBREE_TASKING_SYSTEM "INTERNAL" CACHE STRING "" FORCE)
 set(EMBREE_ISPC_SUPPORT OFF CACHE BOOL "" FORCE)
 # option(GLFW_BUILD_DOCS OFF)
 add_subdirectory(thirdParty/embree)
-include_directories (thirdParty/embree/include)
+include_directories (thirdParty/embree/include EXCLUDE_FROM_ALL)
 
 ## set compiler flags
 set (CMAKE_CXX_STANDARD 11)
