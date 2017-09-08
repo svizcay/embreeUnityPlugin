@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.1)
 # cmake_policy(PUSH)
 # cmake_policy(POP)
 # cmake_policy(SET CMP0048 OLD)
-project (embreeUnityPlugin)
+project (embreeUnityPluginApp)
 #set(PROJECT_VERSION_MAJOR "1")
 #set(PROJECT_VERSION_MINOR "0")
 
@@ -11,8 +11,12 @@ project (embreeUnityPlugin)
 set(EMBREE_TASKING_SYSTEM "INTERNAL" CACHE STRING "" FORCE)
 set(EMBREE_ISPC_SUPPORT OFF CACHE BOOL "" FORCE)
 # option(GLFW_BUILD_DOCS OFF)
-add_subdirectory(thirdParty/embree)
+add_subdirectory (thirdParty/embree)
 include_directories (thirdParty/embree/include EXCLUDE_FROM_ALL)
+
+## own library
+add_subdirectory (plugin_src)
+include_directories (plugin_src)
 
 ## set compiler flags
 set (CMAKE_CXX_STANDARD 11)
@@ -40,18 +44,12 @@ set (CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${warnings})
 ## own project
 include_directories (include)
 set (PROJECT_SOURCES src/main.cpp)
-set (PROJECT_LIBRARIES embree)
+set (PROJECT_LIBRARIES embreeUnityPlugin)
 
 add_executable (${PROJECT_NAME} ${PROJECT_SOURCES})
 
 target_link_libraries (${PROJECT_NAME} ${PROJECT_LIBRARIES})
 
-# ## test library to use opengl within unity
-# add_library (glReadPixels SHARED 
-#     src/glReadPixels.cpp
-#     ${THIRD_PARTY_SOURCES})
-# target_link_libraries (glReadPixels glfw ${GLAD_LIBRARY_DEPENDENCIES})
-# 
 # enable_testing ()
 # add_test (kalsengiTest ${PROJECT_NAME}) # add_test (testName target)
 
