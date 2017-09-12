@@ -4,10 +4,14 @@
 
 #define EXPORT_API __declspec(dllexport) 
 
+#include <embree2/rtcore.h>
+#include <embree2/rtcore_ray.h>
+
 extern "C"
 {
-    EXPORT_API void initPlugin ();
-    EXPORT_API void test (float origin[], float direction[], bool * result, int * result2);
+    EXPORT_API void initPlugin (int _gridSize, float _offset[], float _scale[], int _textureWidth, int _textureHeight, float _vertices[], int _nrVertices, float _indices[], int _nrIndices);
+	EXPORT_API void throwRay(RTCRay & ray);
+    EXPORT_API void test (float origin[], float viewMatrix[], int * result);
     EXPORT_API void finishPlugin ();
 }
 
