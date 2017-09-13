@@ -36,19 +36,26 @@ int main(int argc, char * argv[])
     initPlugin (gridSize, offset, scale, windowSize[0], windowSize[1], vertices, 4, indices, 6);
 
 	float origin[] = { 0, 0, 0 };
-	float direction[] = { 0, -1, 0 };
+	//float direction[] = { 0, -1, 0 };
 
-	bool *result = new bool[5];
-	int *result3 = new int[5];
+	float camParameters[] =
+	{
+		1.0f, 0.0f, 0.0f,	// right
+		0.0f, 1.0f, 0.0f,	// up
+		0.0f, 0.0f, 1.0f,	// forward
+		45.5f,				// fovy
+		4.0f/3.0f,			// camera aspect
+	};
+
+	float *distances = new float[gridSize * gridSize * gridSize];
 
 	int nrTimes = 5;
 	for (int i = 0; i < nrTimes; i++) {
-		test(origin, direction, result, result3);
-		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		test(origin, camParameters, distances);
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 	}
 
-	delete[] result;
-	delete[] result3;
+	delete[] distances;
 
 
     finishPlugin ();

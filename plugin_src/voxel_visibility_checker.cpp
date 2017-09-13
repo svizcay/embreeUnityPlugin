@@ -11,28 +11,14 @@
 
 #include "voxel_visibility_checker.h"
 
+#define DEG2RAD 0.0174532924f
+
 using std::cout;
 using std::cerr;
 using std::endl;
 
 extern "C"
 {
-
-	struct Task
-	{
-		unsigned id;
-
-		Task()
-		{
-			cout << "running Task default constructor" << endl;
-		}
-
-		Task(unsigned id_) : id(id_)
-		{
-			cout << "running Task parametrized constructor" << endl;
-		}
-
-	};
 
 	struct ResultPkg
 	{
@@ -41,14 +27,14 @@ extern "C"
 
 		ResultPkg()
 		{
-			cout << "ResultPkg default constructor" << endl;
+			//cout << "ResultPkg default constructor" << endl;
 			//nrItems = 0;
 		}
 
 		ResultPkg(unsigned _nrItems) : nrItems(_nrItems)
 		{
-			cout << "ResultPkg parametrized constructor" << endl;
-			values.resize(_nrItems);
+			//cout << "ResultPkg parametrized constructor" << endl;
+			values.resize(_nrItems, -1.0f);
 			//values = new float[_nrItems];
 
 		}
@@ -81,18 +67,14 @@ extern "C"
 	float	scale[]			= { 1, 1, 1 };
 	int		windowSize[]	= { 800, 600 };
 
-	Task currentTask;
-
-	Task *taskPtr;
-
-	unsigned currentTaskId;
-
 	bool initialized = false;
 
 	std::future<ResultPkg> * resultPtr;
 
 	float futureGetResultElapsedTime = 0;
 	float restOfCodeElapsedTime = 0;
+
+	bool firstExecution = true;
 
 	void initPlugin(int _gridSize, float _offset[], float _scale[], int _textureWidth, int _textureHeight, float _vertices[], int _nrVertices, float _indices[], int _nrIndices)
     {
@@ -149,69 +131,157 @@ extern "C"
 		}
 		rtcUnmapBuffer(rtcScene, proxyMeshGeomId, RTC_INDEX_BUFFER);
 
-
-
-
-
         // commit changes to the scene (all buffers have to get unmapped before commiting)
         rtcCommit(rtcScene);
-
-		currentTaskId = 0;
-
-		taskPtr = new Task(5);
 
 		initialized = true;
 
 		futureGetResultElapsedTime = 0;
 		restOfCodeElapsedTime = 0;
+
+		firstExecution = true;
     }
 
-	ResultPkg calculateValue(float origin[], float viewMatrix[])
+	ResultPkg calculateValue(float origin[], float camParameters[])
 	{
-		cout << "inside calculateValue with currentTaskId=" << currentTaskId << endl;
+		// compute pixel derivatives
+		float right[] = 
+		{
+			camParameters[0], camParameters[1], camParameters[2]
+		};
 
-		// prepare ray
-		RTCRay ray;
-		ray.org[0] = origin[0];
-		ray.org[1] = origin[1];
-		ray.org[2] = origin[2];
-		// calculate direction by using viewMatrix (right, forward, up)
-		ray.dir[0] = viewMatrix[0];
-		ray.dir[1] = viewMatrix[1];
-		ray.dir[2] = viewMatrix[2];
+		float up[] =
+		{
+			camParameters[3], camParameters[4], camParameters[5]
+		};
 
-		ray.tnear = 0;
-		ray.tfar = std::numeric_limits<float>::infinity();
-		ray.geomID = RTC_INVALID_GEOMETRY_ID;
+		float forward[] =
+		{
+			camParameters[6], camParameters[7], camParameters[8]
+		};
 
-		ResultPkg result (windowSize[0] * windowSize[1]);
+		float fovy = camParameters[9];				// in degrees
+		float cameraAspect = camParameters[10];
+
+		float heightInWS = 2.0f * tanf(fovy * DEG2RAD / 2.0f);
+		float widthInWS = heightInWS * cameraAspect;
+
+		float rowSize[] =
+		{
+			right[0] * widthInWS,
+			right[1] * widthInWS,
+			right[2] * widthInWS,
+		};
+
+		float colSize[] =
+		{
+			up[0] * heightInWS,
+			up[1] * heightInWS,
+			up[2] * heightInWS,
+		};
+
+		float dx[] =
+		{
+			rowSize[0] / (float) (windowSize[0]),
+			rowSize[1] / (float) (windowSize[0]),
+			rowSize[2] / (float) (windowSize[0]),
+		};
+
+		float dy[] =
+		{
+			colSize[0] / (float)(windowSize[1]),
+			colSize[1] / (float)(windowSize[1]),
+			colSize[2] / (float)(windowSize[1]),
+		};
+
+		float topLeftOffset[] =
+		{
+			forward[0] - rowSize[0] / 2.0f - colSize[0] / 2.0f,
+			forward[1] - rowSize[1] / 2.0f - colSize[1] / 2.0f,
+			forward[2] - rowSize[2] / 2.0f - colSize[2] / 2.0f,
+		};
+
+		topLeftOffset[0] = topLeftOffset[0] + origin[0];
+		topLeftOffset[1] = topLeftOffset[1] + origin[1];
+		topLeftOffset[2] = topLeftOffset[2] + origin[2];
+
+		ResultPkg result(gridSize * gridSize * gridSize);
 
 		for (int i = 0; i < windowSize[0]; i++) {
 			for (int j = 0; j < windowSize[1]; j++) {
+				//  TODO: check if i can reuse the same RTCRay datastructure
+
+				// calculate target world pos
+				float target[] =
+				{
+					dx[0] * i + dy[0] * j + topLeftOffset[0],
+					dx[1] * i + dy[1] * j + topLeftOffset[1],
+					dx[2] * i + dy[2] * j + topLeftOffset[2],
+				};
+
+				// prepare ray
+				RTCRay ray;
+				ray.org[0] = origin[0];
+				ray.org[1] = origin[1];
+				ray.org[2] = origin[2];
+				// calculate direction by using viewMatrix (right, forward, up)
+				ray.dir[0] = target[0] - origin[0];
+				ray.dir[1] = target[1] - origin[1];
+				ray.dir[2] = target[2] - origin[2];
+
+				ray.tnear = 0;
+				ray.tfar = std::numeric_limits<float>::infinity();
+				ray.geomID = RTC_INVALID_GEOMETRY_ID;
+
+				// throw ray
 				rtcIntersect(rtcScene, ray);
-				result.values[i*windowSize[1] + j] = ray.tfar;
+
+				// check if ray hit something
+				if (ray.geomID != RTC_INVALID_GEOMETRY_ID) {
+					// normalize direction vector and get hit point
+					float magnitude = sqrtf(ray.dir[0] * ray.dir[0] + ray.dir[1] * ray.dir[1] + ray.dir[2] * ray.dir[2]);
+					float hitPoint[] = 
+					{
+						origin[0] + ray.dir[0] * ray.tfar / magnitude,
+						origin[1] + ray.dir[1] * ray.tfar / magnitude,
+						origin[2] + ray.dir[2] * ray.tfar / magnitude,
+					};
+
+					// transform from world space to voxel space
+					float voxel[] = 
+					{
+						(hitPoint[0] - offset[0]) * scale[0],
+						(hitPoint[1] - offset[1]) * scale[1],
+						(hitPoint[2] - offset[2]) * scale[2],
+					};
+
+					unsigned voxelId = (int)( (int)voxel[0] * gridSize * gridSize + (int)voxel[1] * gridSize + (int)voxel[2]);
+
+					if (voxelId >= 0 && voxelId < (gridSize * gridSize * gridSize)) {
+						result.values[voxelId] = ray.tfar;
+					}
+
+				}
 			}
 		}
-
-		cout << "distance : " << ray.tfar << endl;
 
 		return result;
 	}
 
-    void test (float origin[], float viewMatrix[], int * result)
+    void test (float origin[], float camParameters[], float * result)
     {
 
 		if (initialized) {
 			auto start = std::chrono::steady_clock::now();
 
-			ResultPkg calculatedResult (windowSize[0] * windowSize[1]);
+			ResultPkg calculatedResult (gridSize * gridSize * gridSize);
 
-			if (currentTaskId == 0) {
-				// return dummy value
-				calculatedResult.nrItems = -1;
+			if (firstExecution) {
+				// dont expect any result. there is no task submited yet
+				firstExecution = false;
 			}
 			else {
-				// return value calculated at the previous call
+				// return value calculated by previous submited task
 				auto getResultStart = std::chrono::steady_clock::now();
 				calculatedResult = resultPtr->get();
 				auto getResultEnd = std::chrono::steady_clock::now();
@@ -222,44 +292,20 @@ extern "C"
 				delete resultPtr;
 			}
 
-			if (calculatedResult.values.size() > 0) {
-				cout << "returning previous value: " << calculatedResult.nrItems << " " << calculatedResult.values[0] << endl;
-			}
-			else {
-				cout << "returning previous value: " << calculatedResult.nrItems << " " << calculatedResult.values.size() << endl;
-			}
-
-			resultPtr = new std::future<ResultPkg>(std::async(calculateValue, origin, viewMatrix));
+			// submit new task
+			resultPtr = new std::future<ResultPkg>(std::async(calculateValue, origin, camParameters));
 
 
-
-			// throw ray using a different thread
-			//std::thread workingThread(throwRay, std::ref(ray));
-			//workingThread.join();
-
-			for (int i = 0; i < 5; i++) {
-				*(result + i) = i;
-			}
+			// set values to return
+			memcpy(result, &(calculatedResult.values[0]), sizeof(float) * gridSize * gridSize * gridSize);
 
 			auto end = std::chrono::steady_clock::now();
 
 			float restOfCodeDeltaTime = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();	// in ms
+
 			restOfCodeElapsedTime += restOfCodeDeltaTime;
-
-			//cout << "elapsed time: " << restOfCodeDeltaTime << "ms." << endl;
-
-			currentTaskId++;
 		}
     }
-
-	void throwRay(RTCRay & ray)
-	{
-		for (int i = 0; i < windowSize[0]; i++) {
-			for (int j = 0; j < windowSize[1]; j++) {
-				rtcIntersect(rtcScene, ray);
-			}
-		}
-	}
 
     void finishPlugin ()
     {
@@ -274,7 +320,6 @@ extern "C"
 
         rtcDeleteDevice(rtcDevice);
 
-		delete taskPtr;
 		delete resultPtr;
 
 		initialized = false;
