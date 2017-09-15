@@ -20,15 +20,15 @@ int main(int argc, char * argv[])
 	// send a quad (2 triangles, 4 vertices)
 	float vertices[12] =
 	{
-		-10, -2, -10,
-		-10, -2, +10,
-		+10, -2, -10,
-		+10, -2, +10,
+		-5,	-2,	+0.2,
+		-5,	+2,	+0.2,
+		+5,	-2,	+0.2,
+		+5,	+2,	+0.2,
 	};
 	int indices[6] =
 	{
-		0, 2, 1,
-		1, 2, 3,
+		0, 1, 2,
+		2, 1, 3,
 	};
 
 	// initial data
@@ -49,6 +49,12 @@ int main(int argc, char * argv[])
 
 	float *distances = new float[gridSize * gridSize * gridSize];
 
+	// test clock
+	float mousePos[] = { 1.0f, 2.0f };
+	float * mousePickupResult = new float[4];
+	mousePickup(origin, camParameters, mousePos, mousePickupResult);
+	cout << "mouse pick up " << mousePickupResult[0] << " " << mousePickupResult[1] << " " << mousePickupResult[2] << " distance " << mousePickupResult[3] << endl;
+
 	int nrTimes = 5;
 	for (int i = 0; i < nrTimes; i++) {
 		test(origin, camParameters, distances);
@@ -56,6 +62,7 @@ int main(int argc, char * argv[])
 	}
 
 	delete[] distances;
+	delete[] mousePickupResult;
 
 
     finishPlugin ();

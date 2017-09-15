@@ -78,6 +78,9 @@ extern "C"
 
 	void initPlugin(int _gridSize, float _offset[], float _scale[], int _textureWidth, int _textureHeight, float _vertices[], int _nrVertices, int _indices[], int _nrIndices)
     {
+
+		cerr << "[begin initPlugin]" << endl;
+
         _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);			// Enable 'Flush Zero' bit
         _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);	// Enable 'Denormals Zero'bit
 
@@ -92,7 +95,10 @@ extern "C"
 		windowSize[0] = _textureWidth;
 		windowSize[1] = _textureHeight;
 
+		cerr << "[begin initPlugin] rtcDevice value before assignment" << rtcDevice << endl;
         rtcDevice = rtcNewDevice(nullptr);
+		cerr << "[begin initPlugin] rtcDevice value after assignment" << rtcDevice << endl;
+
 
         // DEPRECATED. use rtcDeviceSetErrorFunction2
         rtcDeviceSetErrorFunction(rtcDevice, embreeErrorCB);
@@ -140,6 +146,8 @@ extern "C"
 		restOfCodeElapsedTime = 0;
 
 		firstExecution = true;
+		cerr << "[end initPlugin]" << endl;
+
     }
 
 	ResultPkg calculateValue(float origin[], float camParameters[])
@@ -268,6 +276,152 @@ extern "C"
 		return result;
 	}
 
+
+	/*
+	* params:
+	vec3 origin
+	camParameters:
+		vec3 cameraRight
+		vec3 cameraUp
+		vec3 cameraForward
+		float fovy
+		float cameraAspect
+	vec2 screenPos
+	len(results) = 4
+	results[0:2] = ray direction
+	reuslts[3] = hit distance (-1 if none)
+	*/
+	void mousePickup(float origin[], float camParameters[], float screenPos[], float * results)
+	{
+		if (initialized) {
+			// unpack camera parameters
+			float right[] =
+			{
+				camParameters[0], camParameters[1], camParameters[2]
+			};
+
+			float up[] =
+			{
+				camParameters[3], camParameters[4], camParameters[5]
+			};
+
+			float forward[] =
+			{
+				camParameters[6], camParameters[7], camParameters[8]
+			};
+
+			float fovy = camParameters[9];				// in degrees
+			float cameraAspect = camParameters[10];
+			// end unpacking camera parameters
+
+			// calculate ray parameters
+			float heightInWS = 2.0f * tanf(fovy * DEG2RAD / 2.0f);
+			float widthInWS = heightInWS * cameraAspect;
+
+			float rowSize[] =
+			{
+				right[0] * widthInWS,
+				right[1] * widthInWS,
+				right[2] * widthInWS,
+			};
+
+			float colSize[] =
+			{
+				up[0] * heightInWS,
+				up[1] * heightInWS,
+				up[2] * heightInWS,
+			};
+
+			float dx[] =
+			{
+				rowSize[0] / (float)(windowSize[0]),
+				rowSize[1] / (float)(windowSize[0]),
+				rowSize[2] / (float)(windowSize[0]),
+			};
+
+			float dy[] =
+			{
+				colSize[0] / (float)(windowSize[1]),
+				colSize[1] / (float)(windowSize[1]),
+				colSize[2] / (float)(windowSize[1]),
+			};
+
+			float topLeftOffset[] =
+			{
+				forward[0] - rowSize[0] / 2.0f - colSize[0] / 2.0f,
+				forward[1] - rowSize[1] / 2.0f - colSize[1] / 2.0f,
+				forward[2] - rowSize[2] / 2.0f - colSize[2] / 2.0f,
+			};
+
+			topLeftOffset[0] = topLeftOffset[0] + origin[0];
+			topLeftOffset[1] = topLeftOffset[1] + origin[1];
+			topLeftOffset[2] = topLeftOffset[2] + origin[2];
+			// end calculate ray parameters
+
+			// calculate ray direction
+			float target[] =
+			{
+				dx[0] * screenPos[0] + dy[0] * screenPos[1] + topLeftOffset[0],
+				dx[1] * screenPos[0] + dy[1] * screenPos[1] + topLeftOffset[1],
+				dx[2] * screenPos[0] + dy[2] * screenPos[1] + topLeftOffset[2],
+			};
+
+			// prepare ray
+			RTCRay ray;
+			ray.org[0] = origin[0];
+			ray.org[1] = origin[1];
+			ray.org[2] = origin[2];
+			// calculate direction by using viewMatrix (right, forward, up)
+			ray.dir[0] = target[0] - origin[0];
+			ray.dir[1] = target[1] - origin[1];
+			ray.dir[2] = target[2] - origin[2];
+
+			ray.tnear = 0;
+			ray.tfar = std::numeric_limits<float>::infinity();
+			ray.geomID = RTC_INVALID_GEOMETRY_ID;
+
+			// throw ray
+			rtcIntersect(rtcScene, ray);
+
+			// check if ray hit something
+			if (ray.geomID != RTC_INVALID_GEOMETRY_ID) {
+				// normalize direction vector and get hit point
+				float magnitude = sqrtf(ray.dir[0] * ray.dir[0] + ray.dir[1] * ray.dir[1] + ray.dir[2] * ray.dir[2]);
+
+
+				results[3] = ray.tfar;
+				//float hitPoint[] =
+				//{
+				//	origin[0] + ray.dir[0] * ray.tfar / magnitude,
+				//	origin[1] + ray.dir[1] * ray.tfar / magnitude,
+				//	origin[2] + ray.dir[2] * ray.tfar / magnitude,
+				//};
+
+				//// transform from world space to voxel space
+				//float voxel[] =
+				//{
+				//	(hitPoint[0] - offset[0]) * scale[0],
+				//	(hitPoint[1] - offset[1]) * scale[1],
+				//	(hitPoint[2] - offset[2]) * scale[2],
+				//};
+
+				//unsigned voxelId = (int)((int)voxel[0] * gridSize * gridSize + (int)voxel[1] * gridSize + (int)voxel[2]);
+
+				//if (voxelId >= 0 && voxelId < (gridSize * gridSize * gridSize)) {
+				//	result.values[voxelId] = ray.tfar;
+				//}
+
+			}
+			else {
+				results[3] = -1;
+			}
+
+			results[0] = ray.dir[0];
+			results[1] = ray.dir[1];
+			results[2] = ray.dir[2];
+		}
+	}
+
     void test (float origin[], float camParameters[], float * result)
     {
 
@@ -309,20 +463,26 @@ extern "C"
 
     void finishPlugin ()
     {
-		// ask for last result (otherwise it will crash)
-		ResultPkg calculatedResult(windowSize[0] * windowSize[1]);
-		calculatedResult  = resultPtr->get();
+		cerr << "[begin finishPlugin]" << endl;
+		if (initialized) {
+			// ask for last result (otherwise it will crash)
+			ResultPkg calculatedResult(windowSize[0] * windowSize[1]);
 
-		cout << "elapsed time: " << restOfCodeElapsedTime << endl;
-		cout << "elapsed time waiting for the result: " << futureGetResultElapsedTime << endl;
+			if (resultPtr != nullptr) {
+				calculatedResult = resultPtr->get();
+				delete resultPtr;
+			}
 
-        rtcDeleteScene(rtcScene);
+			cout << "elapsed time: " << restOfCodeElapsedTime << endl;
+			cout << "elapsed time waiting for the result: " << futureGetResultElapsedTime << endl;
 
-        rtcDeleteDevice(rtcDevice);
+			rtcDeleteScene(rtcScene);
 
-		delete resultPtr;
+			rtcDeleteDevice(rtcDevice);
 
-		initialized = false;
+			initialized = false;
+		}
+		cerr << "[end finishPlugin]" << endl;
     }
 
     void embreeErrorCB(RTCError code, const char* msg)
