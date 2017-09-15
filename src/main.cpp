@@ -25,7 +25,7 @@ int main(int argc, char * argv[])
 		+10, -2, -10,
 		+10, -2, +10,
 	};
-	float indices[6] =
+	int indices[6] =
 	{
 		0, 2, 1,
 		1, 2, 3,

@@ -9,7 +9,7 @@
 
 extern "C"
 {
-    EXPORT_API void initPlugin (int _gridSize, float _offset[], float _scale[], int _textureWidth, int _textureHeight, float _vertices[], int _nrVertices, float _indices[], int _nrIndices);
+    EXPORT_API void initPlugin (int _gridSize, float _offset[], float _scale[], int _textureWidth, int _textureHeight, float _vertices[], int _nrVertices, int _indices[], int _nrIndices);
 	EXPORT_API void throwRay(RTCRay & ray);
     EXPORT_API void test (float origin[], float camParameters[], float * result);
     EXPORT_API void finishPlugin ();
