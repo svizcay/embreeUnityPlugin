@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <sstream>
 #include <chrono>
 #include <thread>
 #include <functional>	// to pass parameters as reference to working threads
@@ -79,7 +80,8 @@ extern "C"
 	void initPlugin(int _gridSize, float _offset[], float _scale[], int _textureWidth, int _textureHeight, float _vertices[], int _nrVertices, int _indices[], int _nrIndices)
     {
 
-		cerr << "[begin initPlugin]" << endl;
+		//cerr << "[begin initPlugin]" << endl;
+		debugInUnity("[begin initPlugin]");
 
         _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);			// Enable 'Flush Zero' bit
         _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);	// Enable 'Denormals Zero'bit
@@ -95,10 +97,11 @@ extern "C"
 		windowSize[0] = _textureWidth;
 		windowSize[1] = _textureHeight;
 
-		cerr << "[begin initPlugin] rtcDevice value before assignment" << rtcDevice << endl;
+		//cerr << "[begin initPlugin] rtcDevice value before assignment" << rtcDevice << endl;
+		//debugInUnity("[begin initPlugin] before rtcNewDevice");
         rtcDevice = rtcNewDevice(nullptr);
-		cerr << "[begin initPlugin] rtcDevice value after assignment" << rtcDevice << endl;
-
+		//cerr << "[begin initPlugin] rtcDevice value after assignment" << rtcDevice << endl;
+		//debugInUnity("[begin initPlugin] after rtcNewDevice");
 
         // DEPRECATED. use rtcDeviceSetErrorFunction2
         rtcDeviceSetErrorFunction(rtcDevice, embreeErrorCB);
@@ -146,7 +149,9 @@ extern "C"
 		restOfCodeElapsedTime = 0;
 
 		firstExecution = true;
-		cerr << "[end initPlugin]" << endl;
+		//cerr << "[end initPlugin]" << endl;
+		debugInUnity("[end initPlugin]");
+
 
     }
 
@@ -310,13 +315,32 @@ extern "C"
 				camParameters[6], camParameters[7], camParameters[8]
 			};
 
+			//printVec3(right, "right");
+			//printVec3(up, "up");
+			//printVec3(forward, "forward");
+
+			//printVec3InUnity(right, "right");
+			//printVec3InUnity(up, "up");
+			//printVec3InUnity(forward, "forward");
+
+
 			float fovy = camParameters[9];				// in degrees
+
+			//cout << "field of view: " << fovy << endl;
+			//debugInUnity("field of view: " + std::to_string(fovy));
+
 			float cameraAspect = camParameters[10];
+
+			//cout << "camera aspect: " << cameraAspect << endl;
+			//debugInUnity("camera aspect: " + std::to_string(cameraAspect));
+
 			// end unpacking camera parameters
 
 			// calculate ray parameters
 			float heightInWS = 2.0f * tanf(fovy * DEG2RAD / 2.0f);
 			float widthInWS = heightInWS * cameraAspect;
+
+			//cout << "width and height in word space of the camera plane (1 unit away of the camera pos): " << widthInWS << " " << heightInWS << endl;
 
 			float rowSize[] =
 			{
@@ -353,9 +377,17 @@ extern "C"
 				forward[2] - rowSize[2] / 2.0f - colSize[2] / 2.0f,
 			};
 
+			//cout << "top left offset before adding origin: " << topLeftOffset[0] << " " << topLeftOffset[1] << " " << topLeftOffset[2] << endl;
+			//printVec3InUnity(topLeftOffset, "top left offset before adding origin");
+
+
 			topLeftOffset[0] = topLeftOffset[0] + origin[0];
 			topLeftOffset[1] = topLeftOffset[1] + origin[1];
 			topLeftOffset[2] = topLeftOffset[2] + origin[2];
+
+			//cout << "top left offset after adding origin: " << topLeftOffset[0] << " " << topLeftOffset[1] << " " << topLeftOffset[2] << endl;
+			//printVec3InUnity(topLeftOffset, "top left offset after adding origin");
+
 			// end calculate ray parameters
 
 			// calculate ray direction
@@ -365,6 +397,9 @@ extern "C"
 				dx[1] * screenPos[0] + dy[1] * screenPos[1] + topLeftOffset[1],
 				dx[2] * screenPos[0] + dy[2] * screenPos[1] + topLeftOffset[2],
 			};
+
+			//cout << "target: " << target[0] << " " << target[1] << " " << target[2] << " (world coordinates)" << endl;
+			printVec3InUnity(target, "target");
 
 			// prepare ray
 			RTCRay ray;
@@ -463,7 +498,8 @@ extern "C"
 
     void finishPlugin ()
     {
-		cerr << "[begin finishPlugin]" << endl;
+		//cerr << "[begin finishPlugin]" << endl;
+		//debugInUnity("[begin finishPlugin]");
 		if (initialized) {
 			// ask for last result (otherwise it will crash)
 			ResultPkg calculatedResult(windowSize[0] * windowSize[1]);
@@ -473,8 +509,8 @@ extern "C"
 				delete resultPtr;
 			}
 
-			cout << "elapsed time: " << restOfCodeElapsedTime << endl;
-			cout << "elapsed time waiting for the result: " << futureGetResultElapsedTime << endl;
+			//cout << "elapsed time: " << restOfCodeElapsedTime << endl;
+			//cout << "elapsed time waiting for the result: " << futureGetResultElapsedTime << endl;
 
 			rtcDeleteScene(rtcScene);
 
@@ -482,7 +518,8 @@ extern "C"
 
 			initialized = false;
 		}
-		cerr << "[end finishPlugin]" << endl;
+		//cerr << "[end finishPlugin]" << endl;
+		debugInUnity("[end finishPlugin]");
     }
 
     void embreeErrorCB(RTCError code, const char* msg)
@@ -502,5 +539,17 @@ extern "C"
 
         cerr << "embree reported the following issue - "
             << "[" << err << "]'" << msg << "'" << std::endl;
+
+		debugInUnity(msg);
     }
+
+	void printVec3(float vector[], std::string prefix)
+	{
+		cout << prefix << ": " << vector[0] << " " << vector[1] << " " << vector[2] << endl;
+	}
+
+	void printVec3InUnity(float vector[], std::string prefix)
+	{
+		debugInUnity(prefix + ": " + std::to_string(vector[0]) + " " + std::to_string(vector[1]) + " " + std::to_string(vector[2]));
+	}
 }

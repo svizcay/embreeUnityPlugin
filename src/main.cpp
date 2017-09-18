@@ -20,22 +20,26 @@ int main(int argc, char * argv[])
 	// send a quad (2 triangles, 4 vertices)
 	float vertices[12] =
 	{
-		-5,	-2,	+0.2,
-		-5,	+2,	+0.2,
-		+5,	-2,	+0.2,
-		+5,	+2,	+0.2,
+		-1.5f,	-0.5f,	+0.0,
+		-0.5f,	+0.5f,	+0.0,
+		-0.5f,	-0.5f,	+0.0,
+		-1.5f,	+0.5f,	+0.0,
 	};
 	int indices[6] =
 	{
+		// clockwise
 		0, 1, 2,
-		2, 1, 3,
+		1, 0, 3,
+		// counter clockwise
+		//0, 1, 3,
+		//0, 2, 1,
 	};
 
 	// initial data
 
     initPlugin (gridSize, offset, scale, windowSize[0], windowSize[1], vertices, 4, indices, 6);
 
-	float origin[] = { 0, 0, 0 };
+	float origin[] = { 0, 0, -2 };
 	//float direction[] = { 0, -1, 0 };
 
 	float camParameters[] =
@@ -50,7 +54,7 @@ int main(int argc, char * argv[])
 	float *distances = new float[gridSize * gridSize * gridSize];
 
 	// test clock
-	float mousePos[] = { 1.0f, 2.0f };
+	float mousePos[] = { 34.0f, 302.0f };
 	float * mousePickupResult = new float[4];
 	mousePickup(origin, camParameters, mousePos, mousePickupResult);
 	cout << "mouse pick up " << mousePickupResult[0] << " " << mousePickupResult[1] << " " << mousePickupResult[2] << " distance " << mousePickupResult[3] << endl;
