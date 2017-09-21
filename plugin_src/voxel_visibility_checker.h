@@ -16,8 +16,11 @@ extern "C"
 {
     EXPORT_API void initPlugin (int _gridSize, float _offset[], float _scale[], int _textureWidth, int _textureHeight, float _vertices[], int _nrVertices, int _indices[], int _nrIndices);
     EXPORT_API void test (float origin[], float camParameters[], float * result);
+	EXPORT_API void depthMap(float origin[], float camParameters[], float * result);
 	EXPORT_API void mousePickup(float origin[], float camParameters[], float screenPos[], float * results);
     EXPORT_API void finishPlugin ();
+
+	void error_handler(void* userPtr, const RTCError code, const char* str = nullptr);
 
 	EXPORT_API void registerDebugCallback(DebugCallback callback)
 	{

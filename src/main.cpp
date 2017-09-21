@@ -1,6 +1,11 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <algorithm>
+#include <limits>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
 
 #include <voxel_visibility_checker.h>
 
@@ -65,11 +70,66 @@ int main(int argc, char * argv[])
 		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 	}
 
+	float * depthmapResult = new float[windowSize[0] * windowSize[1]];
+
+	depthMap(origin, camParameters, depthmapResult);
+	depthMap(origin, camParameters, depthmapResult);
+
+
+	float minValue = std::numeric_limits<float>::infinity();
+	float maxValue = minValue * -1;
+
+	for (int i = 0; i < windowSize[0] * windowSize[1]; i++) {
+		if (depthmapResult[i] < minValue) minValue = depthmapResult[i];
+		if (depthmapResult[i] > maxValue) maxValue = depthmapResult[i];
+	}
+
+	cout << "min and max depths: " << minValue << " " << maxValue << endl;
+
+
 	delete[] distances;
 	delete[] mousePickupResult;
+	delete[] depthmapResult;
 
 
     finishPlugin ();
+
+
+	///*
+	//* working example of soil image image library
+	//*/
+	//const int comp = 3;	// RGB
+	//int quality = 80;
+	//const int imgWidht = 200;
+	//const int imgHeight = 100;
+	//// origin top left
+	////float imgdata[] =
+	////{
+	////	1.0f, 0.0f, 0.0f,	// pixel 1
+	////	0.7f, 0.0f, 0.0f,
+	////	0.3f, 0.0f, 0.0f,
+
+	////	0.0f, 1.0f, 0.0f,
+	////	0.0f, 0.7f, 0.0f,
+	////	0.0f, 0.3f, 0.0f,
+	////};
+	//unsigned char imgdata[imgWidht * imgHeight * comp];
+	//unsigned char color = 255;
+	//cout << "color: " << (unsigned) color << endl;
+	//for (int y = 0; y < imgHeight; y++) {
+	//	for (int x = 0; x < imgWidht; x++) {
+	//		//imgdata[(y * imgWidht + x) * comp + 0] = 1.0f;
+	//		//imgdata[(y * imgWidht + x) * comp + 1] = 1.0f;
+	//		//imgdata[(y * imgWidht + x) * comp + 2] = 1.0f;
+	//		imgdata[(y * imgWidht + x)*comp + 0] = (unsigned char) ((imgWidht - x) / (float) imgWidht * 255);		// red channel
+	//		imgdata[(y * imgWidht + x)*comp + 1] = (unsigned char) ((imgHeight - y) / (float) imgHeight * 255);		// green channel
+	//		imgdata[(y * imgWidht + x)*comp + 2] = 0;		// blue channel
+	//	}
+	//}
+	//int status = stbi_write_jpg("test.jpg", imgWidht, imgHeight, comp, imgdata, quality);
+	//if (status == 0) {
+	//	cerr << "something went wrong when saving img test.jpg" << endl;
+	//}
 
     cout << "done" << endl;
 

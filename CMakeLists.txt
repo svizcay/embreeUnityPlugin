@@ -14,6 +14,9 @@ set(EMBREE_ISPC_SUPPORT OFF CACHE BOOL "" FORCE)
 add_subdirectory (thirdParty/embree)
 include_directories (thirdParty/embree/include EXCLUDE_FROM_ALL)
 
+## std image write library
+include_directories (thirdParty/stb)
+
 ## own library
 add_subdirectory (plugin_src)
 include_directories (plugin_src)
