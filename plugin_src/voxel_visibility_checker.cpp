@@ -26,30 +26,11 @@ extern "C"
 		std::vector<float>	values;
 		int					nrItems;
 
-		ResultPkg()
-		{
-			//cout << "ResultPkg default constructor" << endl;
-			//nrItems = 0;
-		}
+		ResultPkg() {}
 
 		ResultPkg(unsigned _nrItems) : nrItems(_nrItems)
 		{
-			//cout << "ResultPkg parametrized constructor" << endl;
 			values.resize(_nrItems, -1.0f);
-			//values = new float[_nrItems];
-
-		}
-
-		~ResultPkg()
-		{
-			//delete[] values;
-		}
-
-		void Reset(unsigned newSize)
-		{
-			//delete[] values;
-			//values = new float[newSize];
-			nrItems = newSize;
 		}
 	};
 
